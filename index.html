@@ -37,6 +37,8 @@ th{color:var(--mu);font-weight:500}
 <div><label>العرض W (سم)</label><input id="W" type="text" inputmode="decimal" value="6"></div>
 <div><label>الارتفاع H (سم)</label><input id="H" type="text" inputmode="decimal" value="4"></div>
 <div><label>عرض لسان اللصق (سم) — 0 بدون ألسنة</label><input id="T" type="text" inputmode="decimal" value="1.2"></div>
+<div id="tkx"><label>عمق لسان إدخال الغطاء (سم)</label><input id="TK" type="text" inputmode="decimal" value="2"></div>
+<div id="dnx"><label>عمق الألسنة الجانبية (سم)</label><input id="DN" type="text" inputmode="decimal" value="2.4"></div>
 <div id="dbx"><label>ارتفاع الجدران</label><select id="DB"><option value="0">عادي</option><option value="1">مزدوج (دبل ارتفاع)</option></select></div>
 <div id="db"><label>عمق الغطاء (سم)</label><input id="D" type="text" inputmode="decimal" value="2"></div>
 </div>
@@ -105,9 +107,9 @@ function mailer(L,W,H,tb,d,dbl){
  return {tw,th,S,lab,rows,bot:[[x1,x2,f(L)]],left};
 }
 
-function medicine(L,W,H,tb){
+function medicine(L,W,H,tb,tkIn,dnIn){
  const T=tb>0,g=tb,x0=g,xa=x0+L,xb=xa+W,xc=xb+L,xd=xc+W,tw=xd;
- const dl=W,tk=Math.min(W*.35,H/2),dn=Math.min(W*.4,H/2);
+ const dl=W,tk=Math.min(tkIn,H/2),dn=Math.min(dnIn,H/2);
  const y0=dl+tk,y1=y0+H,th=y1+dl+tk,S=[];
  const ins=Math.min(L*.04,tk),ct=Math.min(tk*.6,L*.05),ch=Math.min(W*.15,dn*.5),cg=Math.min(g*.7,H*.1);
  const add=(a,d)=>S.push([...a,d]);
@@ -133,13 +135,13 @@ function medicine(L,W,H,tb){
 
 function render(){
  const K=$('K').value;
- $('db').style.display=K==='mailer'?'':'none';$('dbx').style.display=K==='mailer'?'':'none';
+ $('db').style.display=K==='mailer'?'':'none';$('dbx').style.display=K==='mailer'?'':'none';$('tkx').style.display=K==='med'?'':'none';$('dnx').style.display=K==='med'?'':'none';
  const L=num('L'),W=num('W'),H=num('H'),dd=num('D');
  let tb=num('T');
  if(!(L>0&&W>0&&H>0)){$('m').textContent='أدخل قيم صحيحة أكبر من صفر';return}
  $('m').textContent='';
  if(tb>H){tb=H;$('m').textContent='عرض اللسان قُلّص ليساوي الارتفاع'}
- const g=K==='mailer'?mailer(L,W,H,tb,dd,$('DB').value==='1'):K==='med'?medicine(L,W,H,tb):openBox(L,W,H,tb);
+ const g=K==='mailer'?mailer(L,W,H,tb,dd,$('DB').value==='1'):K==='med'?medicine(L,W,H,tb,num('TK'),num('DN')):openBox(L,W,H,tb);
  const {tw,th}=g,s=Math.max(tw,th)/50,m=s*6;
  let out='';
  const ln=(x1,y1,x2,y2,dash)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#111" stroke-width="${s*0.12}"${dash?` stroke-dasharray="${s*0.6} ${s*0.4}"`:''}/>`;
@@ -165,7 +167,7 @@ $('dl').onclick=()=>{
  const a=document.createElement('a');a.href=u;a.download=($('K').value==='mailer'?'mailer_':'box_')+'net_'+$('L').value+'x'+$('W').value+'x'+$('H').value+'.svg';
  document.body.appendChild(a);a.click();a.remove();
 };
-['L','W','H','T','D'].forEach(i=>$(i).addEventListener('input',()=>{const e=$(i),n=norm(e.value);if(e.value!==n)e.value=n;render()}));
+['L','W','H','T','D','TK','DN'].forEach(i=>$(i).addEventListener('input',()=>{const e=$(i),n=norm(e.value);if(e.value!==n)e.value=n;render()}));
 $('K').addEventListener('change',render);$('DB').addEventListener('change',render);
 render();
 </script>

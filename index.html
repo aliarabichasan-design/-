@@ -70,14 +70,14 @@ function openBox(L,W,H,tb){
 }
 
 function mailer(L,W,H,tb,d,dbl){
- const T=tb>0,tk=tb,X0=Math.max(dbl?2*H:H,d),c=Math.min(tb*.4,H*.3),ct=Math.min(tk*.5,L*.1);
+ const ex=dbl?0.5:0,Ho=H,Hi=H+ex,T=tb>0,tk=tb,X0=Math.max(dbl?2*H+ex:H,d),c=Math.min(tb*.4,H*.3),ct=Math.min(tk*.5,L*.1);
  const x1=X0,x2=X0+L,yL=tk,yB=tk+W,y0=yB+H,y1=y0+W,yf=y1+H,th=yf,tw=2*X0+L,S=[];
  const add=(a,dd)=>S.push([...a,dd]);
  const D=d>0;
  if(D){[[x1,yL,x1-d,yL],[x1-d,yL,x1-d,yB],[x1-d,yB,x1,yB],[x2,yL,x2+d,yL],[x2+d,yL,x2+d,yB],[x2+d,yB,x2,yB]].forEach(a=>add(a,0));}
- [[x1,y0,x1-H,y0],[x1-H,y1,x1,y1],[x2,y0,x2+H,y0],[x2+H,y1,x2,y1],[x1,th,x2,th]].forEach(a=>add(a,0));
- add([x1-H,y0,x1-H,y1],dbl);add([x2+H,y0,x2+H,y1],dbl);
- if(dbl){[[x1-H,y0,x1-2*H,y0],[x1-2*H,y0,x1-2*H,y1],[x1-2*H,y1,x1-H,y1],[x2+H,y0,x2+2*H,y0],[x2+2*H,y0,x2+2*H,y1],[x2+2*H,y1,x2+H,y1]].forEach(a=>add(a,0));}
+ [[x1,y0,x1-Ho,y0],[x1-Ho,y1,x1,y1],[x2,y0,x2+Ho,y0],[x2+Ho,y1,x2,y1],[x1,th,x2,th]].forEach(a=>add(a,0));
+ add([x1-Ho,y0,x1-Ho,y1],dbl);add([x2+Ho,y0,x2+Ho,y1],dbl);
+ if(dbl){[[x1-Ho,y0,x1-Ho-Hi,y0],[x1-Ho-Hi,y0,x1-Ho-Hi,y1],[x1-Ho-Hi,y1,x1-Ho,y1],[x2+Ho,y0,x2+Ho+Hi,y0],[x2+Ho+Hi,y0,x2+Ho+Hi,y1],[x2+Ho+Hi,y1,x2+Ho,y1]].forEach(a=>add(a,0));}
  add([x1,yL,x2,yL],tk>0);
  [[x1,yB,x2,yB],[x1,y0,x2,y0],[x1,y1,x2,y1],[x1,y0,x1,y1],[x2,y0,x2,y1]].forEach(a=>add(a,1));
  add([x1,yL,x1,yB],D);add([x2,yL,x2,yB],D);
@@ -92,14 +92,14 @@ function mailer(L,W,H,tb,d,dbl){
  }
  const mx=X0+L/2;
  const lab=[[mx,yL+W/2,'الغطاء',f(L)+' × '+f(W),1.1],[mx,yB+H/2,'الجدار الخلفي',f(L)+' × '+f(H),1],[mx,y0+W/2,'القاعدة',f(L)+' × '+f(W),1.1],[mx,y1+H/2,'الجدار الأمامي',f(L)+' × '+f(H),1],
-  [x1-H/2,y0+W/2,'جدار أيسر',f(H)+' × '+f(W),.85],[x2+H/2,y0+W/2,'جدار أيمن',f(H)+' × '+f(W),.85]];
+  [x1-Ho/2,y0+W/2,'جدار أيسر',f(H)+' × '+f(W),.85],[x2+Ho/2,y0+W/2,'جدار أيمن',f(H)+' × '+f(W),.85]];
  if(D){lab.push([x1-d/2,yL+W/2,'جانب الغطاء',f(d)+' × '+f(W),.7],[x2+d/2,yL+W/2,'جانب الغطاء',f(d)+' × '+f(W),.7]);}
  if(tk>0)lab.push([mx,tk/2+0.05,'لسان إدخال',f(L)+' × '+f(tk),.6]);
- if(dbl)lab.push([x1-H*1.5,y0+W/2,'طية داخلية',f(H)+' × '+f(W),.7],[x2+H*1.5,y0+W/2,'طية داخلية',f(H)+' × '+f(W),.7]);
+ if(dbl)lab.push([x1-Ho-Hi/2,y0+W/2,'طية داخلية',f(Hi)+' × '+f(W),.7],[x2+Ho+Hi/2,y0+W/2,'طية داخلية',f(Hi)+' × '+f(W),.7]);
  const rows=[['القاعدة',1,f(L)+' × '+f(W)],['الغطاء (متصل بالجدار الخلفي)',1,f(L)+' × '+f(W)],['الجدار الخلفي (يربط القاعدة بالغطاء)',1,f(L)+' × '+f(H)],['الجدار الأمامي',1,f(L)+' × '+f(H)],['الجدار الأيمن / الأيسر',2,f(H)+' × '+f(W)]];
  if(D)rows.push(['جانبا الغطاء',2,f(d)+' × '+f(W)]);
  if(tk>0)rows.push(['لسان إدخال الغطاء',1,f(L)+' × '+f(tk)]);
- if(dbl)rows.push(['طية داخلية للجانبين (ارتفاع مزدوج)',2,f(H)+' × '+f(W)]);
+ if(dbl)rows.push(['طية داخلية للجانبين (ارتفاع مزدوج)',2,f(Hi)+' × '+f(W)]);
  if(T)rows.push(['ألسنة اللصق (شبه منحرف)',4,'قاعدة '+f(H)+' × بروز '+f(tb)]);
  const left=[[0,yL,f(tk)],[yL,yB,f(W)],[yB,y0,f(H)],[y0,y1,f(W)],[y1,yf,f(H)]].filter(a=>a[1]-a[0]>0);
  return {tw,th,S,lab,rows,bot:[[x1,x2,f(L)]],left};

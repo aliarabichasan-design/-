@@ -31,12 +31,18 @@ th{color:var(--mu);font-weight:500}
 <h1>مخطط العلبة المفرود</h1>
 <div class="c">
 <div style="margin-bottom:10px"><label>نوع العلبة</label>
-<select id="K"><option value="open">علبة مفتوحة (جدران متصلة بالقاعدة)</option><option value="mailer">علبة ملر (الغطاء متصل بالقاعدة)</option><option value="med">علبة دواء (غطاء علوي وسفلي بلسان إدخال)</option></select></div>
+<select id="K"><option value="open">علبة مفتوحة (جدران متصلة بالقاعدة)</option><option value="mailer">علبة ملر (الغطاء متصل بالقاعدة)</option><option value="gable">علبة وجبات بمقبض (سقف مائل)</option><option value="bag">كيس كارتوني (شنطة بحبل)</option><option value="med">علبة دواء (غطاء علوي وسفلي بلسان إدخال)</option></select></div>
 <div class="g">
 <div><label>الطول L (سم)</label><input id="L" type="text" inputmode="decimal" value="10"></div>
 <div><label>العرض W (سم)</label><input id="W" type="text" inputmode="decimal" value="6"></div>
 <div><label>الارتفاع H (سم)</label><input id="H" type="text" inputmode="decimal" value="4"></div>
 <div><label>عرض لسان اللصق (سم) — 0 بدون ألسنة</label><input id="T" type="text" inputmode="decimal" value="1.2"></div>
+<div id="hmx"><label>عمق طية الحافة العلوية (سم)</label><input id="HM" type="text" inputmode="decimal" value="3"></div>
+<div id="hsx"><label>تباعد ثقوب الحبل (سم)</label><input id="HS" type="text" inputmode="decimal" value="6"></div>
+<div id="spx"><label>تقسيم المخطط</label><select id="SP"><option value="0">كامل (قطعة وحدة)</option><option value="1">مقسوم نصفين (قطعتين)</option></select></div>
+<div id="arx"><label>ترتيب القطعتين</label><select id="AR"><option value="side">جنب بعض</option><option value="stack">فوق بعض</option></select></div>
+<div id="rrx"><label>ارتفاع السقف (سم)</label><input id="RR" type="text" inputmode="decimal" value="3"></div>
+<div id="rhx"><label>ارتفاع المقبض (سم)</label><input id="RH" type="text" inputmode="decimal" value="3.5"></div>
 <div id="tkx"><label>عمق لسان إدخال الغطاء (سم)</label><input id="TK" type="text" inputmode="decimal" value="2"></div>
 <div id="dnx"><label>عمق الألسنة الجانبية (سم)</label><input id="DN" type="text" inputmode="decimal" value="2.4"></div>
 <div id="dbx"><label>ارتفاع الجدران</label><select id="DB"><option value="0">عادي</option><option value="1">مزدوج (دبل ارتفاع)</option></select></div>
@@ -45,6 +51,11 @@ th{color:var(--mu);font-weight:500}
 <div id="m"></div>
 <button id="dl">تحميل المخطط SVG (بالمقياس الحقيقي 1:1 سم)</button>
 </div>
+<div class="c"><div style="font-weight:600;margin-bottom:8px">إضافة لسان</div>
+<div class="g"><div style="grid-column:1/3"><label>مكان اللسان</label><select id="XE"></select></div>
+<div id="xlw"><label>طول اللسان (سم) — فارغ = كامل الحافة</label><input id="XL" type="text" inputmode="decimal" value=""></div>
+<div><label>عمق اللسان (سم)</label><input id="XD" type="text" inputmode="decimal" value="1.5"></div></div>
+<button id="XA">إضافة اللسان</button><div id="XList"></div></div>
 <div class="c"><div id="d"></div>
 <div class="n">الخط المتصل = قص &nbsp;|&nbsp; الخط المتقطع = طي. كل الأرقام بالسنتيمتر.</div></div>
 <div class="c"><table><thead><tr><th>القطعة</th><th>العدد</th><th>القياس (سم)</th></tr></thead><tbody id="tb"></tbody></table>
@@ -53,22 +64,34 @@ th{color:var(--mu);font-weight:500}
 <script>
 const $=id=>document.getElementById(id);
 const f=x=>String(+(+x).toFixed(2));
-let svgText='';
+let svgText='',tabs=[],edgeSig='';
+function delTab(i){tabs.splice(i,1);render();}
 const norm=s=>s.replace(/[٠-٩]/g,d=>d.charCodeAt(0)-1632).replace(/[۰-۹]/g,d=>d.charCodeAt(0)-1776).replace(/[٫،,]/g,'.').replace(/[^0-9.]/g,'');
 const num=id=>parseFloat(norm($(id).value))||0;
 
-function openBox(L,W,H,tb){
- const T=tb>0,c=Math.min(tb*.4,H*.3),tw=L+2*H,th=W+2*H,S=[];
+function openBox(L,W,H,tb,dbl){
+ const T=tb>0,c=Math.min(tb*.4,H*.3),Hi=H+(dbl?0.5:0),ox=dbl?Hi:0,oy=dbl?Hi:0;
+ const x0=ox,x1=ox+H,x2=x1+L,x3=x2+H,y0=oy,y1=oy+H,y2=y1+W,y3=y2+H,tw=x3+ox,th=y3+oy,S=[];
  const add=(a,d)=>S.push([...a,d]);
- [[H,H,H,0],[H,0,H+L,0],[H+L,0,H+L,H],[2*H+L,H,2*H+L,H+W],[H+L,H+W,H+L,2*H+W],[H+L,2*H+W,H,2*H+W],[H,2*H+W,H,H+W],[0,H+W,0,H]].forEach(a=>add(a,0));
- [[H,H,H+L,H],[H+L,H,H+L,H+W],[H,H+W,H+L,H+W],[H,H,H,H+W]].forEach(a=>add(a,1));
- [[H+L,H,2*H+L,H],[H+L,H+W,2*H+L,H+W],[0,H+W,H,H+W],[0,H,H,H]].forEach(a=>add(a,T));
- if(T){const tab=(x1,x2,y,d)=>{const y2=y+d*tb;const p=[[x1,y],[x1+c,y2],[x2-c,y2],[x2,y]];for(let i=0;i<3;i++)add([...p[i],...p[i+1]],0)};
-  tab(H+L,2*H+L,H,-1);tab(H+L,2*H+L,H+W,1);tab(0,H,H+W,1);tab(0,H,H,-1);}
- const lab=[[H+L/2,H+W/2,'القاعدة',f(L)+' × '+f(W),1.1],[H+L/2,H/2,'الجدار الخلفي',f(L)+' × '+f(H),1],[H+L/2,H+W+H/2,'الجدار الأمامي',f(L)+' × '+f(H),1],[H/2,H+W/2,'جدار أيسر',f(H)+' × '+f(W),.85],[H+L+H/2,H+W/2,'جدار أيمن',f(H)+' × '+f(W),.85]];
+ [[x1,y1,x1,y0],[x2,y0,x2,y1],[x2,y2,x2,y3],[x1,y3,x1,y2]].forEach(a=>add(a,0));
+ [[x1,y0,x2,y0],[x3,y1,x3,y2],[x2,y3,x1,y3],[x0,y2,x0,y1]].forEach(a=>add(a,dbl));
+ [[x1,y1,x2,y1],[x2,y1,x2,y2],[x1,y2,x2,y2],[x1,y1,x1,y2]].forEach(a=>add(a,1));
+ [[x2,y1,x3,y1],[x2,y2,x3,y2],[x0,y2,x1,y2],[x0,y1,x1,y1]].forEach(a=>add(a,T));
+ if(T){const tab=(p,q,y,d)=>{const y2_=y+d*tb;const pt=[[p,y],[p+c,y2_],[q-c,y2_],[q,y]];for(let i=0;i<3;i++)add([...pt[i],...pt[i+1]],0)};
+  tab(x2,x3,y1,-1);tab(x2,x3,y2,1);tab(x0,x1,y2,1);tab(x0,x1,y1,-1);}
+ if(dbl){
+  [[x1,y0,x1,0],[x1,0,x2,0],[x2,0,x2,y0],[x1,y3,x1,th],[x1,th,x2,th],[x2,th,x2,y3],[x0,y1,0,y1],[0,y1,0,y2],[0,y2,x0,y2],[x3,y1,tw,y1],[tw,y1,tw,y2],[tw,y2,x3,y2]].forEach(a=>add(a,0));
+ }
+ const mx=(x1+x2)/2,my=(y1+y2)/2;
+ const lab=[[mx,my,'القاعدة',f(L)+' × '+f(W),1.1],[mx,y0+H/2,'الجدار الخلفي',f(L)+' × '+f(H),1],[mx,y2+H/2,'الجدار الأمامي',f(L)+' × '+f(H),1],[x0+H/2,my,'جدار أيسر',f(H)+' × '+f(W),.85],[x2+H/2,my,'جدار أيمن',f(H)+' × '+f(W),.85]];
+ if(dbl)lab.push([mx,Hi/2*1,'طية داخلية',f(L)+' × '+f(Hi),.8],[mx,y3+Hi/2,'طية داخلية',f(L)+' × '+f(Hi),.8],[Hi/2,my,'طية داخلية',f(Hi)+' × '+f(W),.7],[x3+Hi/2,my,'طية داخلية',f(Hi)+' × '+f(W),.7]);
  const rows=[['القاعدة',1,f(L)+' × '+f(W)],['الجدار الأمامي / الخلفي',2,f(L)+' × '+f(H)],['الجدار الأيمن / الأيسر',2,f(W)+' × '+f(H)]];
+ if(dbl)rows.push(['طية داخلية أمامية / خلفية (ارتفاع مزدوج)',2,f(L)+' × '+f(Hi)],['طية داخلية للجانبين (ارتفاع مزدوج)',2,f(W)+' × '+f(Hi)]);
  if(T)rows.push(['ألسنة اللصق (شبه منحرف)',4,'قاعدة '+f(H)+' × بروز '+f(tb)]);
- return {tw,th,S,lab,rows,bot:[[0,H,f(H)],[H,H+L,f(L)],[H+L,tw,f(H)]],left:[[0,H,f(H)],[H,H+W,f(W)],[H+W,th,f(H)]]};
+ const bot=[[0,x0,f(Hi)],[x0,x1,f(H)],[x1,x2,f(L)],[x2,x3,f(H)],[x3,tw,f(Hi)]].filter(a=>a[1]-a[0]>0);
+ const left=[[0,y0,f(Hi)],[y0,y1,f(H)],[y1,y2,f(W)],[y2,y3,f(H)],[y3,th,f(Hi)]].filter(a=>a[1]-a[0]>0);
+ const edges=[{id:'back',name:'الجدار الخلفي (أعلى)',a:[x1,dbl?0:y0],b:[x2,dbl?0:y0],n:[0,-1]},{id:'front',name:'الجدار الأمامي (أسفل)',a:[x1,dbl?th:y3],b:[x2,dbl?th:y3],n:[0,1]},{id:'left',name:'الجدار الأيسر (يسار)',a:[dbl?0:x0,y1],b:[dbl?0:x0,y2],n:[-1,0]},{id:'right',name:'الجدار الأيمن (يمين)',a:[dbl?tw:x3,y1],b:[dbl?tw:x3,y2],n:[1,0]}];
+ return {tw,th,S,lab,rows,bot,left,edges};
 }
 
 function mailer(L,W,H,tb,d,dbl){
@@ -104,7 +127,9 @@ function mailer(L,W,H,tb,d,dbl){
  if(dbl)rows.push(['طية داخلية للجانبين (ارتفاع مزدوج)',2,f(Hi)+' × '+f(W)]);
  if(T)rows.push(['ألسنة اللصق (شبه منحرف)',4,'قاعدة '+f(H)+' × بروز '+f(tb)]);
  const left=[[0,yL,f(tk)],[yL,yB,f(W)],[yB,y0,f(H)],[y0,y1,f(W)],[y1,yf,f(H)]].filter(a=>a[1]-a[0]>0);
- return {tw,th,S,lab,rows,bot:[[x1,x2,f(L)]],left};
+ const xl=dbl?x1-Ho-Hi:x1-Ho,xr=dbl?x2+Ho+Hi:x2+Ho;
+ const edges=[{id:'front',name:'الجدار الأمامي (أسفل)',a:[x1,th],b:[x2,th],n:[0,1]},{id:'left',name:'الجدار الأيسر (يسار)',a:[xl,y0],b:[xl,y1],n:[-1,0]},{id:'right',name:'الجدار الأيمن (يمين)',a:[xr,y0],b:[xr,y1],n:[1,0]},{id:'lidl',name:'جانب الغطاء الأيسر',a:[x1-d,yL],b:[x1-d,yB],n:[-1,0]},{id:'lidr',name:'جانب الغطاء الأيمن',a:[x2+d,yL],b:[x2+d,yB],n:[1,0]},{id:'lidt',name:'الغطاء (أعلى)',a:tk>0?[x1+ct,0]:[x1,yL],b:tk>0?[x2-ct,0]:[x2,yL],n:[0,-1]}];
+ return {tw,th,S,lab,rows,bot:[[x1,x2,f(L)]],left,edges};
 }
 
 function medicine(L,W,H,tb,tkIn,dnIn){
@@ -130,36 +155,136 @@ function medicine(L,W,H,tb,tkIn,dnIn){
  if(T)rows.push(['لسان اللصق',1,f(H)+' × '+f(g)]);
  const bot=[[0,g,f(g)],[x0,xa,f(L)],[xa,xb,f(W)],[xb,xc,f(L)],[xc,xd,f(W)]].filter(a=>a[1]-a[0]>0);
  const left=[[0,tk,f(tk)],[tk,y0,f(dl)],[y0,y1,f(H)],[y1,y1+dl,f(dl)],[y1+dl,th,f(tk)]].filter(a=>a[1]-a[0]>0);
- return {tw,th,S,lab,rows,bot,left};
+ const edges=[{id:'front',name:'الواجهة (أسفل)',a:[x0,y1],b:[xa,y1],n:[0,1]},{id:'back',name:'الخلف (أعلى)',a:[xb,y0],b:[xc,y0],n:[0,-1]},{id:'right',name:'الجانب الأيمن (يمين)',a:[xd,y0],b:[xd,y1],n:[1,0]}];
+ if(!T)edges.push({id:'left',name:'الواجهة (يسار)',a:[x0,y0],b:[x0,y1],n:[-1,0]});
+ return {tw,th,S,lab,rows,bot,left,edges};
+}
+
+function gable(L,W,H,tb,rr,hh){
+ const T=tb>0,g=tb,x0=g,xa=x0+L,xb=xa+W,xc=xb+L,xd=xc+W,tw=xd;
+ const S0=Math.hypot(W/2,rr),bw=Math.min(W/2,H/2),y0=S0+hh,y1=y0+H,th=y1+bw,ys=y0-S0,yh=ys-hh,S=[];
+ const gh=rr>0?rr:W*.25,cg=Math.min(g*.7,H*.1),ch=Math.min(hh*.3,L*.05);
+ const add=(a,d)=>S.push([...a,d]);
+ const poly=p=>{for(let i=0;i<p.length-1;i++)add([...p[i],...p[i+1]],0)};
+ [xa,xb,xc].forEach(x=>add([x,y0,x,y1],1));
+ add([x0,y0,x0,y1],T);add([xd,y0,xd,y1],0);
+ add([x0,y0,xd,y0],1);add([x0,y1,xd,y1],1);
+ const cw=Math.min(L*.4,L-2*ch-1),chh=hh*.45,cr=Math.min(chh*.3,cw*.1),cy=ys-hh/2;
+ const roof=(p,q)=>{
+  add([p,y0,p,ys],0);add([q,y0,q,ys],0);add([p,ys,q,ys],hh>0);
+  if(hh>0){poly([[p,ys],[p,yh+ch],[p+ch,yh],[q-ch,yh],[q,yh+ch],[q,ys]]);
+   if(hh>=1&&cw>0){const cx=(p+q)/2,a=cx-cw/2,b=cx+cw/2,t=cy-chh/2,u=cy+chh/2;
+    poly([[a+cr,t],[b-cr,t],[b,t+cr],[b,u-cr],[b-cr,u],[a+cr,u],[a,u-cr],[a,t+cr],[a+cr,t]]);}}
+ };
+ roof(x0,xa);roof(xb,xc);
+ [[xa,xb],[xc,xd]].forEach(([p,q])=>{const tp=W*.2;poly([[p,y0],[p+tp,y0-gh],[q-tp,y0-gh],[q,y0]]);add([(p+q)/2,y0,(p+q)/2,y0-gh],1);});
+ [[x0,xa],[xa,xb],[xb,xc],[xc,xd]].forEach(([p,q])=>{const tp=Math.min((q-p)*.1,bw*.3);poly([[p,y1],[p+tp,th],[q-tp,th],[q,y1]]);});
+ if(T)poly([[x0,y0],[0,y0+cg],[0,y1-cg],[x0,y1]]);
+ const lab=[[x0+L/2,y0+H/2,'الواجهة',f(L)+' × '+f(H),1.1],[xa+W/2,y0+H/2,'جانب',f(W)+' × '+f(H),.9],[xb+L/2,y0+H/2,'الخلف',f(L)+' × '+f(H),1.1],[xc+W/2,y0+H/2,'جانب',f(W)+' × '+f(H),.9],[x0+L/2,ys+S0/2-(hh>0?0:0),'سقف مائل',f(L)+' × '+f(S0),.8],[xb+L/2,ys+S0/2,'سقف مائل',f(L)+' × '+f(S0),.8]];
+ const rows=[['الواجهة / الخلف',2,f(L)+' × '+f(H)],['الجانبان',2,f(W)+' × '+f(H)],['السقف المائل (فوق الواجهة والخلف)',2,f(L)+' × '+f(S0)]];
+ if(hh>0)rows.push(['لوح المقبض (فيه فتحة)',2,f(L)+' × '+f(hh)+' — الفتحة '+f(cw)+' × '+f(chh)]);
+ rows.push(['لسان الجانب العلوي (يطوى للداخل)',2,'قاعدة '+f(W)+' × ارتفاع '+f(gh)],['أغطية القاع الكبيرة (واجهة/خلف)',2,f(L)+' × '+f(bw)],['أغطية القاع الجانبية',2,f(W)+' × '+f(bw)]);
+ if(T)rows.push(['لسان اللصق',1,f(H)+' × '+f(g)]);
+ const bot=[[0,g,f(g)],[x0,xa,f(L)],[xa,xb,f(W)],[xb,xc,f(L)],[xc,xd,f(W)]].filter(a=>a[1]-a[0]>0);
+ const left=[[0,hh,f(hh)],[hh,y0,f(S0)],[y0,y1,f(H)],[y1,th,f(bw)]].filter(a=>a[1]-a[0]>0);
+ const tf=Math.min(L*.1,bw*.3);
+ const edges=[{id:'front',name:'الواجهة (أسفل)',a:[x0+tf,th],b:[xa-tf,th],n:[0,1]},{id:'back',name:'الخلف (أسفل)',a:[xb+tf,th],b:[xc-tf,th],n:[0,1]},{id:'right',name:'الجانب الأيمن (يمين)',a:[xd,y0],b:[xd,y1],n:[1,0]}];
+ if(!T)edges.push({id:'left',name:'الواجهة (يسار)',a:[x0,y0],b:[x0,y1],n:[-1,0]});
+ if(hh>0)edges.push({id:'hf',name:'مقبض الواجهة (أعلى)',a:[x0+ch,yh],b:[xa-ch,yh],n:[0,-1]},{id:'hb',name:'مقبض الخلف (أعلى)',a:[xb+ch,yh],b:[xc-ch,yh],n:[0,-1]});
+ return {tw,th,S,lab,rows,bot,left,edges};
+}
+
+function bag(L,W,H,tb,hm,hs,split,arr){
+ const g=tb,T=tb>0,ov=1.5,bf=W/2+ov,bb=W/2,bg=W/2,hole=Math.min(.5,L*.1);
+ const hsp=Math.min(hs,L-2*hole-1);
+ const wide=k=>({t:'w',k,nm:k==='F'?'الواجهة':'الخلف',w:L}),gus={t:'g',nm:'جانب',w:W};
+ const piece=(ox,oy,list,sfx)=>{
+  const S=[],lab=[],edges=[],xs=[];let x=ox+g;const xs0=x;
+  list.forEach(p=>{xs.push(x);x+=p.w});
+  const xe=x,y0=oy+hm,y1=y0+H,cg=Math.min(g*.7,H*.1);
+  const add=(a,d)=>S.push([...a,d]);
+  const poly=q=>{for(let i=0;i<q.length-1;i++)add([...q[i],...q[i+1]],0)};
+  const circ=(cx,cy,r)=>{const q=[];for(let k=0;k<=14;k++){const a=k/14*2*Math.PI;q.push([cx+r*Math.cos(a),cy+r*Math.sin(a)])}poly(q)};
+  if(hm>0){add([xs0,y0,xs0,oy],0);add([xs0,oy,xe,oy],0);add([xe,oy,xe,y0],0);}
+  add([xs0,y0,xe,y0],hm>0);add([xs0,y1,xe,y1],1);
+  xs.forEach((a,i)=>{if(i>0)add([a,y0,a,y1],1);});
+  add([xs0,y0,xs0,y1],T);add([xe,y0,xe,y1],0);
+  list.forEach((p,i)=>{const a=xs[i],b=a+p.w,m=(a+b)/2;
+   if(p.t==='g'){add([m,y0,m,y1],1);const tp=Math.min(p.w*.18,bg*.5);poly([[a,y1],[a+tp,y1+bg],[b-tp,y1+bg],[b,y1]]);}
+   else{const d=p.k==='F'?bf:bb,tp=Math.min(p.w*.03,.5);poly([[a,y1],[a+tp,y1+d],[b-tp,y1+d],[b,y1]]);
+    edges.push({id:(p.k==='F'?'front':'back')+sfx,name:p.nm+' (أسفل)'+(sfx?' — القطعة '+(sfx==='A'?'1':'2'):''),a:[a+tp,y1+d],b:[b-tp,y1+d],n:[0,1]});
+    if(hsp>0){[m-hsp/2,m+hsp/2].forEach(cx=>{circ(cx,y0+hm/2+0.0,hole/2);if(hm>0)circ(cx,y0-hm/2,hole/2);});}}
+   lab.push([m,y0+H/2,p.nm,f(p.w)+' × '+f(H),p.t==='w'?1.1:.9]);
+  });
+  if(hm>0){lab.push([xe-W/2,oy+hm/2,'الحافة',f(xe-xs0)+' × '+f(hm),.8]);edges.push({id:'hem'+sfx,name:'الحافة العلوية'+(sfx?' — القطعة '+(sfx==='A'?'1':'2'):''),a:[xs0,oy],b:[xe,oy],n:[0,-1]});}
+  if(T)poly([[xs0,y0],[ox,y0+cg],[ox,y1-cg],[xs0,y1]]);
+  edges.push({id:'right'+sfx,name:'الحافة اليمنى'+(sfx?' — القطعة '+(sfx==='A'?'1':'2'):''),a:[xe,y0],b:[xe,y1],n:[1,0]});
+  const hh=list.some(p=>p.k==='F')?bf:bb;
+  if(sfx)lab.push([(xs0+xe)/2,y1-H*.1,'القطعة '+(sfx==='A'?'1':'2'),f(xe-ox)+' × '+f(y1+hh-oy),1]);
+  return {S,lab,edges,w:xe-ox,h:y1+hh-oy,xs,xs0,xe,list,y0,y1,ox,oy};
+ };
+ let ps=[],tw,th,gap=1,note='';
+ if(!split){ps=[piece(0,0,[wide('F'),gus,wide('B'),gus],'')];tw=ps[0].w;th=ps[0].h;}
+ else{const A=piece(0,0,[wide('F'),gus],'A');
+  const B=arr==='stack'?piece(0,A.h+gap,[wide('B'),gus],'B'):piece(A.w+gap,0,[wide('B'),gus],'B');
+  ps=[A,B];tw=arr==='stack'?A.w:A.w+gap+B.w;th=arr==='stack'?A.h+gap+B.h:Math.max(A.h,B.h);
+  note='المخطط مقسوم لقطعتين: الأولى (واجهة + جانب) والثانية (خلف + جانب). كل جانب يلصق بلسان اللصق للقطعة الثانية.';}
+ const S=[],lab=[],edges=[];ps.forEach(q=>{S.push(...q.S);lab.push(...q.lab);edges.push(...q.edges);});
+ const A=ps[0];
+ const bot=[],left=[[0,hm,f(hm)],[hm,hm+H,f(H)],[hm+H,A.h,f(bf)]].filter(a=>a[1]-a[0]>0);
+ ps.forEach(q=>{if(g>0)bot.push([q.ox,q.xs0,f(g)]);q.list.forEach((p,i)=>bot.push([q.xs[i],q.xs[i]+p.w,f(p.w)]));});
+ const n=split?2:1;
+ const rows=[['الواجهة / الخلف',2,f(L)+' × '+f(H)],['الجانبان (فيهم خط طي بالنص)',2,f(W)+' × '+f(H)],['طية الحافة العلوية',n,f(A.xe-A.xs0)+' × '+f(hm)],['ثقوب الحبل (قطر '+f(hole)+')',hsp>0?4*(hm>0?2:1):0,'تباعد '+f(hsp)],['غطاء القاع الأمامي',1,f(L)+' × '+f(bf)],['غطاء القاع الخلفي',1,f(L)+' × '+f(bb)],['أغطية قاع الجانبين',2,f(W)+' × '+f(bg)]];
+ if(T)rows.push(['لسان اللصق',n,f(H)+' × '+f(g)]);
+ if(split)rows.unshift(['القطعة 1 كاملة (واجهة + جانب)',1,f(ps[0].w)+' × '+f(ps[0].h)],['القطعة 2 كاملة (خلف + جانب)',1,f(ps[1].w)+' × '+f(ps[1].h)]);
+ const bot2=split?ps.map(q=>[q.ox,q.ox+q.w,f(q.w)]):[];
+ return {tw,th,S,lab,rows:rows.filter(r=>r[1]>0),bot,bot2,left,edges,note};
 }
 
 function render(){
  const K=$('K').value;
- $('db').style.display=K==='mailer'?'':'none';$('dbx').style.display=K==='mailer'?'':'none';$('tkx').style.display=K==='med'?'':'none';$('dnx').style.display=K==='med'?'':'none';
+ $('db').style.display=K==='mailer'?'':'none';$('dbx').style.display=(K==='mailer'||K==='open')?'':'none';$('tkx').style.display=K==='med'?'':'none';$('rrx').style.display=K==='gable'?'':'none';$('hmx').style.display=$('hsx').style.display=$('spx').style.display=K==='bag'?'':'none';$('arx').style.display=(K==='bag'&&$('SP').value==='1')?'':'none';$('rhx').style.display=K==='gable'?'':'none';$('dnx').style.display=K==='med'?'':'none';
  const L=num('L'),W=num('W'),H=num('H'),dd=num('D');
  let tb=num('T');
  if(!(L>0&&W>0&&H>0)){$('m').textContent='أدخل قيم صحيحة أكبر من صفر';return}
  $('m').textContent='';
  if(tb>H){tb=H;$('m').textContent='عرض اللسان قُلّص ليساوي الارتفاع'}
- const g=K==='mailer'?mailer(L,W,H,tb,dd,$('DB').value==='1'):K==='med'?medicine(L,W,H,tb,num('TK'),num('DN')):openBox(L,W,H,tb);
- const {tw,th}=g,s=Math.max(tw,th)/50,m=s*6;
+ const g=K==='mailer'?mailer(L,W,H,tb,dd,$('DB').value==='1'):K==='med'?medicine(L,W,H,tb,num('TK'),num('DN')):K==='gable'?gable(L,W,H,tb,num('RR'),num('RH')):K==='bag'?bag(L,W,H,tb,num('HM'),num('HS'),$('SP').value==='1',$('AR').value):openBox(L,W,H,tb,$('DB').value==='1');
+ const S2=[...g.S],rows2=[...g.rows],E=g.edges||[];
+ {const sg=E.map(e=>e.id).join(',');
+  if(sg!==edgeSig){const cur=$('XE').value;$('XE').innerHTML='<option value="*">كل الجدران (بكامل عرض الجدار)</option>'+E.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');if(cur==='*'||E.some(e=>e.id===cur))$('XE').value=cur;edgeSig=sg;}
+  $('xlw').style.display=$('XE').value==='*'?'none':'';}
+ const applyTab=(t,e)=>{
+  const dx=e.b[0]-e.a[0],dy=e.b[1]-e.a[1],Le=Math.hypot(dx,dy);if(!(Le>0))return;
+  const ux=dx/Le,uy=dy/Le,len=Math.min(t.len>0?t.len:Le,Le),dep=t.depth,tp=Math.min(dep*.4,len*.15);
+  const mx=(e.a[0]+e.b[0])/2,my=(e.a[1]+e.b[1])/2;
+  const a=[mx-ux*len/2,my-uy*len/2],b=[mx+ux*len/2,my+uy*len/2];
+  const a2=[a[0]+e.n[0]*dep+ux*tp,a[1]+e.n[1]*dep+uy*tp],b2=[b[0]+e.n[0]*dep-ux*tp,b[1]+e.n[1]*dep-uy*tp];
+  S2.push([...a,...b,2],[...a,...a2,0],[...a2,...b2,0],[...b2,...b,0]);
+  rows2.push(['لسان إضافي — '+e.name,1,f(len)+' × '+f(dep)]);};
+ tabs.forEach(t=>{if(t.k!==K)return;if(t.id==='*')E.forEach(e=>applyTab({...t,len:0},e));else{const e=E.find(e=>e.id===t.id);if(e)applyTab(t,e);}});
+ let bx0=0,by0=0,bx1=g.tw,by1=g.th;
+ S2.forEach(a=>{bx0=Math.min(bx0,a[0],a[2]);bx1=Math.max(bx1,a[0],a[2]);by0=Math.min(by0,a[1],a[3]);by1=Math.max(by1,a[1],a[3]);});
+ const tw=bx1-bx0,th=by1-by0,s=Math.max(tw,th)/50,m=s*(g.bot2&&g.bot2.length?9:6);
+ $('XList').innerHTML=tabs.map((t,i)=>{if(t.k!==K)return '';const e=t.id==='*'?{name:'كل الجدران'}:E.find(e=>e.id===t.id);return e?`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd);font-size:14px"><span>${e.name}: ${t.id==='*'||!(t.len>0)?'كامل':f(t.len)} × ${f(t.depth)} سم</span><button onclick="delTab(${i})" style="width:auto;margin:0;padding:4px 12px;font-size:13px;background:#b3261e">حذف</button></div>`:''}).join('');
  let out='';
- const ln=(x1,y1,x2,y2,dash)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#111" stroke-width="${s*0.12}"${dash?` stroke-dasharray="${s*0.6} ${s*0.4}"`:''}/>`;
+ const ln=(x1,y1,x2,y2,dash)=>(dash===2?`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fff" stroke-width="${s*0.3}"/>`:'')+`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#111" stroke-width="${s*0.12}"${dash?` stroke-dasharray="${s*0.6} ${s*0.4}"`:''}/>`;
  const tx=(x,y,t,sz,rot)=>`<text x="${x}" y="${y}" font-size="${sz}" text-anchor="middle" fill="#111" font-family="Arial,Tahoma,sans-serif"${rot?` transform="rotate(-90 ${x} ${y})"`:''}>${t}</text>`;
  const hd=(x1,x2,y,t)=>ln(x1,y,x2,y)+ln(x1,y-s*.4,x1,y+s*.4)+ln(x2,y-s*.4,x2,y+s*.4)+tx((x1+x2)/2,y-s*.5,t,s*.9);
  const vd=(y1,y2,x,t)=>ln(x,y1,x,y2)+ln(x-s*.4,y1,x+s*.4,y1)+ln(x-s*.4,y2,x+s*.4,y2)+tx(x-s*.5,(y1+y2)/2,t,s*.9,1);
- g.S.forEach(a=>out+=ln(...a));
+ S2.forEach(a=>out+=ln(...a));
  g.lab.forEach(([x,y,n,z,sc])=>out+=tx(x,y-s*.3*sc,n,s*sc)+tx(x,y+s*.9*sc,z,s*sc));
- const yt=-s*2,yb=th+s*2.6,xl=-s*2,xr=tw+s*2;
- out+=hd(0,tw,yt,f(tw));
+ const yt=by0-s*2,yb=by1+s*2.6,xl=bx0-s*2,xr=bx1+s*2;
+ out+=hd(bx0,bx1,yt,f(tw));
  g.bot.forEach(a=>out+=hd(a[0],a[1],yb,a[2]));
- out+=vd(0,th,xr,f(th));
+ (g.bot2||[]).forEach(a=>out+=hd(a[0],a[1],yb+s*3,a[2]));
+ out+=vd(by0,by1,xr,f(th));
  g.left.forEach(a=>out+=vd(a[0],a[1],xl,a[2]));
- const vb=`${-m} ${-m} ${tw+2*m} ${th+2*m}`;
+ const vb=`${bx0-m} ${by0-m} ${tw+2*m} ${th+2*m}`;
  $('d').innerHTML=`<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${out}</svg>`;
- svgText=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(tw+2*m)}cm" height="${f(th+2*m)}cm" viewBox="${vb}"><rect x="${-m}" y="${-m}" width="${tw+2*m}" height="${th+2*m}" fill="#fff"/>${out}</svg>`;
- $('tb').innerHTML=g.rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td dir="ltr" style="text-align:right">${r[2]}</td></tr>`).join('');
- $('tot').textContent='أبعاد اللوح المطلوب: '+f(tw)+' × '+f(th)+' سم';$('tot2').textContent='الحجم الداخلي للعلبة: '+f(L)+' × '+f(W)+' × '+f(H)+' سم (بدون احتساب سمك المادة).';
+ svgText=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(tw+2*m)}cm" height="${f(th+2*m)}cm" viewBox="${vb}"><rect x="${bx0-m}" y="${by0-m}" width="${tw+2*m}" height="${th+2*m}" fill="#fff"/>${out}</svg>`;
+ $('tb').innerHTML=rows2.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td dir="ltr" style="text-align:right">${r[2]}</td></tr>`).join('');
+ $('tot').textContent='أبعاد اللوح المطلوب: '+f(tw)+' × '+f(th)+' سم';$('tot2').textContent='الحجم الداخلي للعلبة: '+f(L)+' × '+f(W)+' × '+f(H)+' سم (بدون احتساب سمك المادة).'+(g.note?' — '+g.note:'');
 }
 $('dl').onclick=()=>{
  if(!svgText)return;
@@ -167,8 +292,9 @@ $('dl').onclick=()=>{
  const a=document.createElement('a');a.href=u;a.download=($('K').value==='mailer'?'mailer_':'box_')+'net_'+$('L').value+'x'+$('W').value+'x'+$('H').value+'.svg';
  document.body.appendChild(a);a.click();a.remove();
 };
-['L','W','H','T','D','TK','DN'].forEach(i=>$(i).addEventListener('input',()=>{const e=$(i),n=norm(e.value);if(e.value!==n)e.value=n;render()}));
-$('K').addEventListener('change',render);$('DB').addEventListener('change',render);
+['L','W','H','T','D','TK','DN','RR','RH','HM','HS','XL','XD'].forEach(i=>$(i).addEventListener('input',()=>{const e=$(i),n=norm(e.value);if(e.value!==n)e.value=n;render()}));
+$('XA').onclick=()=>{const d=num('XD');if(!(d>0)||!$('XE').value)return;tabs.push({k:$('K').value,id:$('XE').value,len:num('XL'),depth:d});render();};
+$('K').addEventListener('change',render);$('SP').addEventListener('change',render);$('AR').addEventListener('change',render);$('XE').addEventListener('change',render);$('DB').addEventListener('change',render);
 render();
 </script>
 </body>
